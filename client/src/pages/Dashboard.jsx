@@ -1,50 +1,93 @@
 import { useEffect, useState } from "react";
 import api from "../services/api.js";
-import ExpenseChart from "../components/ExpenseChart.jsx";
 
-const Dashboard = () => {
-  const [summary, setSummary] = useState([]);
-  const [totals, setTotals] = useState({ income: 0, expense: 0 });
+const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN");
+const today = () => new Date().toISOString().slice(0,10);
 
-  useEffect(() => {
-    const load = async () => {
-      const [{ data: expSummary }, { data: incomes }, { data: expenses }] = await Promise.all([
-        api.get("/expenses/summary"),
-        api.get("/income"),
-        api.get("/expenses"),
-      ]);
-      setSummary(expSummary);
-      setTotals({
-        income: incomes.reduce((s, i) => s + i.amount, 0),
-        expense: expenses.reduce((s, e) => s + e.amount, 0),
-      });
-    };
-    load();
-  }, []);
+const Income = () => {
+  const [incomes, setIncomes] = useState([]);
+  const [form, setForm] = useState({ source: "", amount: "", date: today(), notes: "" });
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    const { data } = await api.get("/income");
+    setIncomes(data);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setLoading(true);
+    await api.post("/income", { ...form, amount: Number(form.amount) });
+    setForm({ source: "", amount: "", date: today(), notes: "" });
+    await load(); setLoading(false);
+  };
+
+  const handleDelete = async (id) => { await api.delete(`/income/${id}`); load(); };
+
+  const total = incomes.reduce((s, i) => s + i.amount, 0);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-slate-500 text-sm">Total Income</p>
-          <p className="text-2xl font-bold text-green-600">{totals.income}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-slate-500 text-sm">Total Expenses</p>
-          <p className="text-2xl font-bold text-red-600">{totals.expense}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-slate-500 text-sm">Net Balance</p>
-          <p className="text-2xl font-bold">{totals.income - totals.expense}</p>
-        </div>
+    <div>
+      <h1 className="page-title">Income</h1>
+
+      <div className="card" style={{marginBottom:"1.5rem"}}>
+        <p style={{fontWeight:600,marginBottom:"1rem",fontSize:".875rem",color:"var(--text-2)"}}>ADD INCOME</p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Source</label>
+              <input className="form-input" placeholder="e.g. Salary, Freelance" value={form.source}
+                onChange={e => setForm({...form, source: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Amount (₹)</label>
+              <input type="number" className="form-input" placeholder="0" value={form.amount}
+                onChange={e => setForm({...form, amount: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Date</label>
+              <input type="date" className="form-input" value={form.date}
+                onChange={e => setForm({...form, date: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notes (optional)</label>
+              <input className="form-input" placeholder="Any notes..." value={form.notes}
+                onChange={e => setForm({...form, notes: e.target.value})} />
+            </div>
+            <button className="btn btn-primary btn-full" disabled={loading}>
+              {loading ? "Adding..." : "+ Add Income"}
+            </button>
+          </div>
+        </form>
       </div>
-      <div className="bg-white p-6 rounded shadow max-w-md">
-        <h2 className="font-semibold mb-4">Spending by Category</h2>
-        <ExpenseChart summary={summary} />
+
+      <div className="card">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
+          <p style={{fontWeight:600,fontSize:".875rem",color:"var(--text-2)"}}>INCOME HISTORY</p>
+          {incomes.length > 0 && <span style={{color:"var(--emerald)",fontWeight:700,fontSize:"1rem"}}>Total: {fmt(total)}</span>}
+        </div>
+        {incomes.length > 0 ? (
+          <div className="list">
+            {incomes.map(i => (
+              <div key={i._id} className="list-item">
+                <div>
+                  <p className="list-item-title">{i.source}</p>
+                  <p className="list-item-sub">{new Date(i.date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})} {i.notes && `· ${i.notes}`}</p>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:"1rem"}}>
+                  <span className="amount-positive">+{fmt(i.amount)}</span>
+                  <button className="btn-ghost" onClick={() => handleDelete(i._id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">No income recorded yet.<br/>Add your first income entry above.</div>
+        )}
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default Income;

@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return <div style={{padding:"2rem",textAlign:"center"}}>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };

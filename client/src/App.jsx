@@ -1,31 +1,60 @@
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar.jsx";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Income from "./pages/Income.jsx";
-import Expenses from "./pages/Expenses.jsx";
-import Budget from "./pages/Budget.jsx";
-import Reports from "./pages/Reports.jsx";
-import Insights from "./pages/Insights.jsx";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
-function App() {
+const nav = [
+  { to: "/", label: "Dashboard", icon: "⊞" },
+  { to: "/income", label: "Income", icon: "↑" },
+  { to: "/expenses", label: "Expenses", icon: "↓" },
+  { to: "/budget", label: "Budget", icon: "◎" },
+  { to: "/insights", label: "AI Insights", icon: "✦" },
+  { to: "/reports", label: "Reports", icon: "↗" },
+];
+
+const Sidebar = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100">
-      <Navbar />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />
-        <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-        <Route path="/budget" element={<ProtectedRoute><Budget /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-<Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
-      </Routes>
-    </div>
-  );
-}
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <span className="logo-icon">₹</span>
+        <span className="logo-text">SpendWise</span>
+      </div>
 
-export default App;
+      {user && (
+        <div className="sidebar-user">
+          <div className="user-avatar">{user.name?.charAt(0).toUpperCase()}</div>
+          <div className="user-info">
+            <p className="user-name">{user.name}</p>
+            <p className="user-email">{user.email}</p>
+          </div>
+        </div>
+      )}
+
+      <nav className="sidebar-nav">
+        {nav.map(({ to, label, icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`}
+          >
+            <span className="nav-icon">{icon}</span>
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </nav>
+
+      <button onClick={handleLogout} className="sidebar-logout">
+        <span>⎋</span> Logout
+      </button>
+    </aside>
+  );
+};
+
+export default Sidebar;

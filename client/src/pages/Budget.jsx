@@ -1,98 +1,98 @@
 import { useEffect, useState } from "react";
 import api from "../services/api.js";
 
-const CATEGORIES = ["Food", "Transport", "Housing", "Utilities", "Entertainment", "Health", "Shopping", "Education", "Other"];
-
+const CATEGORIES = ["Food","Transport","Housing","Utilities","Entertainment","Health","Shopping","Education","Other"];
+const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN");
 const now = new Date();
 
 const Budget = () => {
   const [status, setStatus] = useState([]);
-  const [form, setForm] = useState({
-    category: "Food",
-    monthlyLimit: "",
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-  });
+  const [form, setForm] = useState({ category:"Food", monthlyLimit:"", month: now.getMonth()+1, year: now.getFullYear() });
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
     const { data } = await api.get(`/budget/status?month=${form.month}&year=${form.year}`);
     setStatus(data);
   };
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.month, form.year]);
+  useEffect(() => { load(); }, [form.month, form.year]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); setLoading(true);
     await api.post("/budget", { ...form, monthlyLimit: Number(form.monthlyLimit) });
-    setForm({ ...form, monthlyLimit: "" });
-    load();
+    setForm(f => ({ ...f, monthlyLimit: "" }));
+    await load(); setLoading(false);
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Budget Planner</h1>
+    <div>
+      <h1 className="page-title">Budget Planner</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-6 grid grid-cols-2 gap-3">
-        <select
-          className="border p-2 rounded"
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <input
-          type="number"
-          placeholder="Monthly limit"
-          className="border p-2 rounded"
-          value={form.monthlyLimit}
-          onChange={(e) => setForm({ ...form, monthlyLimit: e.target.value })}
-          required
-        />
-        <input
-          type="number"
-          min="1"
-          max="12"
-          placeholder="Month"
-          className="border p-2 rounded"
-          value={form.month}
-          onChange={(e) => setForm({ ...form, month: Number(e.target.value) })}
-        />
-        <input
-          type="number"
-          placeholder="Year"
-          className="border p-2 rounded"
-          value={form.year}
-          onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
-        />
-        <button className="col-span-2 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">
-          Set Budget
-        </button>
-      </form>
-
-      <div className="bg-white rounded shadow divide-y">
-        {status.map((s) => (
-          <div key={s.category} className="p-3">
-            <div className="flex justify-between">
-              <span className="font-medium">{s.category}</span>
-              <span className={s.overBudget ? "text-red-600 font-semibold" : "text-green-600"}>
-                {s.spent} / {s.monthlyLimit}
-              </span>
+      <div className="card" style={{marginBottom:"1.5rem"}}>
+        <p style={{fontWeight:600,marginBottom:"1rem",fontSize:".875rem",color:"var(--text-2)"}}>SET MONTHLY BUDGET</p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={form.category}
+                onChange={e => setForm({...form, category: e.target.value})}>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
             </div>
-            <div className="w-full bg-slate-200 rounded h-2 mt-2">
-              <div
-                className={`h-2 rounded ${s.overBudget ? "bg-red-500" : "bg-indigo-500"}`}
-                style={{ width: `${Math.min(100, (s.spent / s.monthlyLimit) * 100)}%` }}
-              />
+            <div className="form-group">
+              <label className="form-label">Monthly Limit (₹)</label>
+              <input type="number" className="form-input" placeholder="0" value={form.monthlyLimit}
+                onChange={e => setForm({...form, monthlyLimit: e.target.value})} required />
             </div>
-            {s.overBudget && <p className="text-xs text-red-500 mt-1">Over budget!</p>}
+            <div className="form-group">
+              <label className="form-label">Month</label>
+              <input type="number" className="form-input" min="1" max="12" value={form.month}
+                onChange={e => setForm({...form, month: Number(e.target.value)})} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Year</label>
+              <input type="number" className="form-input" value={form.year}
+                onChange={e => setForm({...form, year: Number(e.target.value)})} />
+            </div>
+            <button className="btn btn-primary btn-full" disabled={loading}>
+              {loading ? "Saving..." : "Set Budget"}
+            </button>
           </div>
-        ))}
-        {status.length === 0 && <p className="p-4 text-slate-500">No budgets set for this month.</p>}
+        </form>
+      </div>
+
+      <div className="card">
+        <p style={{fontWeight:600,marginBottom:"1.25rem",fontSize:".875rem",color:"var(--text-2)"}}>
+          BUDGET STATUS — {form.month}/{form.year}
+        </p>
+        {status.length > 0 ? (
+          <div style={{display:"flex",flexDirection:"column",gap:"1.25rem"}}>
+            {status.map(s => {
+              const pct = Math.min(100, Math.round((s.spent / s.monthlyLimit) * 100));
+              const fillClass = pct >= 100 ? "progress-fill--danger" : pct >= 80 ? "progress-fill--warn" : "progress-fill--ok";
+              return (
+                <div key={s.category}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:".35rem"}}>
+                    <span style={{fontWeight:600,fontSize:".875rem"}}>{s.category}</span>
+                    <span style={{fontSize:".875rem",color: s.overBudget ? "var(--red)" : "var(--text-2)"}}>
+                      {fmt(s.spent)} <span style={{color:"var(--text-3)"}}>/ {fmt(s.monthlyLimit)}</span>
+                    </span>
+                  </div>
+                  <div className="progress-track">
+                    <div className={`progress-fill ${fillClass}`} style={{width:`${pct}%`}} />
+                  </div>
+                  {s.overBudget && (
+                    <p style={{fontSize:".75rem",color:"var(--red)",marginTop:".3rem",fontWeight:600}}>
+                      Over budget by {fmt(s.spent - s.monthlyLimit)}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty">No budgets set for this month.<br/>Add a budget above to start tracking.</div>
+        )}
       </div>
     </div>
   );

@@ -1,45 +1,31 @@
-import { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api.js";
 
-const AuthContext = createContext(null);
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
-    setLoading(false);
-  }, []);
-
-  const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data));
-    setUser(data);
-    return data;
-  };
-
-  const register = async (name, email, password) => {
-    const { data } = await api.post("/auth/register", { name, email, password });
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data));
-    setUser(data);
-    return data;
-  };
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+const download = async (path, filename) => {
+  const res = await api.get(path, { responseType: "blob" });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement("a");
+  link.href = url; link.setAttribute("download", filename);
+  document.body.appendChild(link); link.click(); link.remove();
 };
 
-export const useAuth = () => useContext(AuthContext);
+const Reports = () => (
+  <div>
+    <h1 className="page-title">Reports</h1>
+    <div className="card">
+      <p style={{fontWeight:600,marginBottom:".5rem",fontSize:".875rem"}}>Export your data</p>
+      <p style={{color:"var(--text-3)",fontSize:".875rem",marginBottom:"1.5rem"}}>
+        Download all your expense data as a spreadsheet or a formatted PDF summary report.
+      </p>
+      <div style={{display:"flex",gap:"1rem"}}>
+        <button className="btn btn-primary" onClick={() => download("/reports/csv","expenses.csv")}>
+          ↓ Download CSV
+        </button>
+        <button className="btn btn-dark" onClick={() => download("/reports/pdf","report.pdf")}>
+          ↓ Download PDF
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+export default Reports;
